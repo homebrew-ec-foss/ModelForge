@@ -41,17 +41,46 @@ class Loader:
 
     def load_config(self, config_path):
         logging.info(f"Loading config from {config_path}")
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
-        logging.info("Config loaded successfully")
-        return config
+        try:
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+            logging.info("Config loaded successfully")
+            return config
+        except FileNotFoundError:
+            logging.error(f"Config file not found: {config_path}")
+            raise
+        except yaml.YAMLError as e:
+            logging.error(f"Error parsing YAML file: {e}")
+            raise
 
     def load_dataset(self):
-        dataset_config = self.config['dataset']
-        logging.info(f"Loading dataset from {dataset_config['path']}")
-        self.data = pd.read_csv(dataset_config['path'], delimiter=dataset_config['delimiter'], encoding='utf-8', encoding_errors='ignore')
-        logging.info("Dataset loaded successfully")
-        return self.data
+        dataset_config = self.config.get('dataset')
+        if dataset_config is None:
+            logging.error("Dataset configuration is missing from the config file.")
+            raise ValueError("Dataset configuration is missing from the config file.")
+        
+        dataset_path = dataset_config.get('path')
+        if dataset_path is None:
+            logging.error("Dataset path is missing from the dataset configuration.")
+            raise ValueError("Dataset path is missing from the dataset configuration.")
+        
+        logging.info(f"Loading dataset from {dataset_path}")
+        try:
+            self.data = pd.read_csv(dataset_path, delimiter=dataset_config['delimiter'], encoding='utf-8', encoding_errors='ignore')
+            logging.info("Dataset loaded successfully")
+            return self.data
+        except FileNotFoundError:
+            logging.error(f"Dataset file not found: {dataset_path}")
+            raise
+        except pd.errors.EmptyDataError:
+            logging.error("The dataset file is empty.")
+            raise
+        except pd.errors.ParserError:
+            logging.error("Error parsing the dataset file. It may be in an unsupported format.")
+            raise
+        except Exception as e:
+            logging.error(f"An unexpected error occurred: {e}")
+            raise
     
 class DataCleaner:
     def __init__(self, config):
